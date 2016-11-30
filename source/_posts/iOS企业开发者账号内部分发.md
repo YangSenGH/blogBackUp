@@ -1,0 +1,99 @@
+---
+title: iOS企业开发者账号内部分发
+date: 2015-11-25 20:33:26     
+categories: 编程         
+tags: [真机] 
+---
+上个月由于公司开发的棋牌类游戏接近尾声，需要大量的苹果测试机来支持，之前只有一个公司开发者账号，每添加新的测试机都需要添加一次UDID，做了不少无用功，再加上本身外包性质的公司导致客户方面频繁更换手机测试app也是个棘手的问题，因此公司又壕气申请了企****业开发者账号，今天就总结下企业开发者账号内部(`In-House`)应用的分发过程。<!-- more -->
+
+## 什么是企业内部应用
+企业内部应用，即只在企业部门和员工内部使用、不对外公开的应用。苹果提供了专门的`In-House`证书用来发布这种应用，可以分发给任意的手机，只要通过一个URL即可下载安装，不用上传到App Stroe审核，所以一般外包类型的公司因为涉及到项目多，客户杂，所以使用企业内部分发可以省去很多app测试上面的时间。我把企业内部应用也叫做`In-House`应用。
+
+`In-House`应用，有时需要根据部门需求进行版本的快速迭代，因为不需要App Store审核，所以可以做到随时修改，随时发布，节省了大量的时间。`In-House`证书还可以用于应用的内测分发，现在大部分的内测分发平台如蒲公英，Fir.im等的公测功能就是使用`In-House`证书实现的。
+
+## 需要准备的文件
+>1 . 企业开发者账号。99$的个人或公司开发者账号不行，必须以企业的名义[申请一个299$的企业开发者账号](https://developer.apple.com/programs/enterprise/)。
+>2 . 带SSL证书的域名。企业内部应用需要把ipa文件上传到服务器，然后通过一个链接来下载安装，而苹果很重视安全性，要求这个链接的域名必须具有SSL证书，支持 https ，否则无法安装（这一部分就交给后台的人去做吧）。
+>3 . `ipa`文件。
+>4 . `plist`文件。名称必须与`ipa`文件一致，用于配置bundle id、版本号、`ipa`文件的URL、应用图标等。
+>5 . @1x 和 @2x 的Icon。下载安装时显示应用图标。
+
+## 项目打包
+### 1.创建发布证书（Production Certificates），选择`In-House`类型的，过程我就不赘述了，和其他证书一样。
+![senblog-151125](http://oh6pxgkf2.bkt.clouddn.com/senblog-151125-0.jpg)
+
+### 2.创建配置文件（**Distribution Provisioning Profiles**）
+![senblog-151125](http://oh6pxgkf2.bkt.clouddn.com/senblog-151125-1.jpg)
+![senblog-151125](http://oh6pxgkf2.bkt.clouddn.com/senblog-151125-2.jpg)
+
+### 3.在Xcode-BuildSettings中选择对应的Code Signing 和 Provisioning Profile, Archive
+![senblog-151125](http://oh6pxgkf2.bkt.clouddn.com/senblog-151125-4.png)
+
+### 4.导出 ipa 文件
+![senblog-151125](http://oh6pxgkf2.bkt.clouddn.com/senblog-151125-3.jpg)
+
+## Plist文件
+Xcode 5及其以前打包`In-House`应用会一起生成`ipa`和`plist`文件，但Xcode 6 以后就只有`ipa`文件了，所以要手动生成 plist文件。
+![senblog-151125](http://oh6pxgkf2.bkt.clouddn.com/senblog-151125-5.png)
+文件格式如下：
+``` objc
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>items</key>
+    <array>
+        <dict>
+            <key>assets</key>
+            <array>
+                <dict>
+                    <key>kind</key>
+                    <string>software-package</string>
+                    <key>url</key>
+                    <string>http://www.xxx.com/ios/xxx.ipa</string>
+                </dict>
+<dict>
+<key>kind</key>
+<string>full-size-image</string>
+<key>needs-shine</key>
+<false/>
+<key>url</key>
+<string>http://www.xxx.com/image/xxx.@2x.png</string>
+</dict>
+<dict>
+<key>kind</key>
+<string>display-image</string>
+<key>needs-shine</key>
+<true/>
+<key>url</key>
+<string>http://www.xxx.com/image/xxx.png</string>
+</dict>
+            </array>
+            <key>metadata</key>
+            <dict>
+                <key>bundle-identifier</key>
+<string>http://yangsendev.com/</string>
+                <key>bundle-version</key>
+                <string>1.0</string>
+                <key>kind</key>
+                <string>software</string>
+                <key>title</key>
+                <string>这里用的是中文名称</string>
+            </dict>
+        </dict>
+    </array>
+</dict>
+</plist>
+```
+
+
+## 发布与安装
+### 发布
+把ipa、配置好的plist 文件和图标交给后台吧，后面就看他们的了。
+### 安装
+iOS的企业内部应用是通过访问`plist`文件来安装的，因为`plist`文件中包含了对应的ipa文件和图标的URL，iPhone会根据URL自动下载并安装应用程序。
+苹果是一个极其重视安全性的公司，`iOS 9` 以后，安装的企业级应用在第一次打开之前必须要用户手动去信任这些App。
+具体步骤如下：
+打开 `设置` --> `通用` --> `描述文件与设备管理`
+在 `企业级应用` 分组下，点击 `信任` 开发者的证书
+
