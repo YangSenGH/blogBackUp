@@ -1,5 +1,5 @@
 ---
-title: iOS企业开发者账号内部分发
+title: iOS企业开发者账号实现内部分发
 date: 2015-11-25 20:33:26     
 categories: 编程         
 tags: [真机] 
